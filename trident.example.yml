@@ -1,0 +1,49 @@
+# a name for labelling pool processes
+application: app_name
+
+# loads handlers in the master process before forking workers
+prefork: true
+
+# Configure the behavior of the pool manager in response to signals
+# actions are methods on PoolManager and can be sequenced
+signals:
+  TERM: stop_gracefully
+  INT: stop_forcefully
+
+# define and setup all the PoolHandlers
+handlers:
+  myhandler:
+    environment: "require '<%= Rails.root %>/config/environment'"
+    class: MyRailsWorker
+    options:
+      my_default_option: hum
+    signals:
+      stop_forcefully: INT
+      stop_gracefully: TERM
+  otherhandler:
+    environment: "class MyWorker; def initialize(opts); end; def start; end; end"
+    class: MyWorker
+    options:
+      my_default_option: dum
+    signals:
+      stop_forcefully: INT
+      stop_gracefully: TERM
+
+# Configure the worker pools
+pools:
+  mypool:
+    # number of worker processes
+    size: 5
+    # chooses a handler defined above for running process
+    handler: myhandler
+    # options passed to each handler's initializer (merged into handler options above)
+    options:
+      some_option: foo
+  otherpool:
+    # number of worker processes
+    size: 3
+    # chooses a handler defined above for running process
+    handler: myhandler
+    # options passed to each handler's initializer (merged into handler options above)
+    options:
+      some_option: bar

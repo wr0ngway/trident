@@ -1,0 +1,51 @@
+# a name for labelling pool processes
+application: app_name
+
+# loads handlers in the master process before forking workers
+prefork: true
+
+# Configure the behavior of the pool manager in response to signals
+# actions are methods on PoolManager and can be sequenced
+signals:
+  INT: stop_gracefully
+  TERM: stop_forcefully
+  USR1: [stop_forcefully, wait]
+
+# define and setup all the PoolHandlers
+handlers:
+  myhandler:
+    environment: |+
+      class MyWorker
+        def initialize(o)
+          @o = o
+        end
+        def start
+          loop { sleep 1 }
+        end
+      end
+    class: MyWorker
+    options:
+    signals:
+      default: USR2
+      stop_gracefully: INT
+      stop_forcefully: TERM
+
+# Configure the worker pools
+pools:
+  mypool1:
+    # number of worker processes
+    size: 3
+    # chooses a handler defined above for running process
+    handler: myhandler
+    # options passed to each handler's initializer (merged into handler options above)
+    options:
+      name: one
+  mypool2:
+    # number of worker processes
+    size: 2
+    # chooses a handler defined above for running process
+    handler: myhandler
+    # options passed to each handler's initializer (merged into handler options above)
+    options:
+      name: two
+
