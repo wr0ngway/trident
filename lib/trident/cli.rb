@@ -89,7 +89,9 @@ module Trident
 
     # Configure through yaml file
     def load_config(path_to_yaml_file)
-      config = YAML::load(ERB.new(IO.read(path_to_yaml_file)).result)
+      erb = ERB.new(IO.read(path_to_yaml_file))
+      erb.filename = path_to_yaml_file
+      config = YAML::load(erb.result)
       config = config[Rails.env.to_s] if defined?(::Rails) && config.has_key?(Rails.env.to_s)
       config
     end
