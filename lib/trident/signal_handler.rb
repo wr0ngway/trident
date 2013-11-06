@@ -51,7 +51,7 @@ module Trident
         signal_result = handle_signal_queue
         break if signal_result == :break
         msg = snooze if signal_queue.empty?
-        logger.debug "Main loop awake"
+        logger.debug "Main loop awakened: #{msg.inspect}"
         break if msg == MSG_STOP
       end
       logger.info "Main loop exited"
