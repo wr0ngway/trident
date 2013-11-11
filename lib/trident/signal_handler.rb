@@ -50,6 +50,7 @@ module Trident
       loop do
         signal_result = handle_signal_queue
         break if signal_result == :break
+        logger.debug "Snoozing main loop"
         msg = snooze if signal_queue.empty?
         logger.debug "Main loop awakened: #{msg.inspect}"
         break if msg == MSG_STOP
@@ -81,7 +82,6 @@ module Trident
     def snooze
       msg = ""
       begin
-        logger.info "Snoozing main loop"
         ready = IO.select([self_pipe.first], nil, nil, 1) or return
         ready.first && ready.first.first or return
         loop { msg << self_pipe.first.read_nonblock(CHUNK_SIZE) }
