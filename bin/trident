@@ -3,6 +3,13 @@
 
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 
+# setup gemlogger before loading our classes so they use
+# our logger, and it doesn't get overridden by a preloaded
+# client environment
+require 'gem_logger'
+require 'trident/cli_logger'
+GemLogger.logger_concern = Trident::CLILogger
+
 require 'trident'
 Trident::CLI.run
 

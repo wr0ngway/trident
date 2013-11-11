@@ -1,6 +1,7 @@
 require 'clamp'
 require 'erb'
 require 'yaml'
+require 'trident/cli_logger'
 
 module Trident
   class CLI < Clamp::Command
@@ -44,8 +45,8 @@ module Trident
       self.pidfile = expand_path(pidfile)
       self.config = expand_path(config)
 
-      GemLogger.default_logger = Logger.new(logfile ? logfile : STDOUT)
-      GemLogger.default_logger.level = verbose? ? Logger::DEBUG : Logger::INFO
+      Trident::CLILogger.trident_logger = Logger.new(logfile ? logfile : STDOUT)
+      Trident::CLILogger.trident_logger.level = verbose? ? Logger::DEBUG : Logger::INFO
       $stdout.sync = $stderr.sync = true
 
       if daemon? && (logfile.nil? || pidfile.nil?)

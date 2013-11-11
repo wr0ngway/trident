@@ -93,6 +93,16 @@ class FileCounter
 
 end
 
+def wait_for(io, pattern)
+  timeout(5) do
+    loop do
+      line = io.readline
+      puts line if ENV['DEBUG']
+      break if line =~ pattern
+    end
+  end
+end
+
 class MiniTest::Should::TestCase
   ORIGINAL_PROCLINE = $0
 

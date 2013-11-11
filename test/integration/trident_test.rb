@@ -7,16 +7,6 @@ class Trident::TridentTest < MiniTest::Should::TestCase
     @cli = "#{File.expand_path('../../..', __FILE__)}/bin/trident"
   end
 
-  def wait_for(io, pattern)
-    timeout(5) do
-      loop do
-        line = io.readline
-        puts line if ENV['DEBUG']
-        break if line =~ pattern
-      end
-    end
-  end
-
   def process_list
     processes = {}
     lines = `ps -e -opid,command`.lines.grep(/trident\[/)

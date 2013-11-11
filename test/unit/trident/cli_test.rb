@@ -24,6 +24,20 @@ class Trident::CLITest < MiniTest::Should::TestCase
 
   end
 
+  context "#logging" do
+
+    should "keep own logger when preforking" do
+      # Make sure cli keeps log when preforked environment replaces GemLogger.basic_logger
+      cmd = "#{@cli} --config #{@project_root}/test/fixtures/trident_logging.yml"
+      io = IO.popen(cmd, :err=>[:child, :out])
+      wait_for(io, /<pool-mypool1> Pool started with 2 workers/)
+
+      Process.kill("TERM", io.pid)
+      Process.wait(io.pid)
+    end
+
+  end
+
   context "#project_root" do
 
     should "use bundler env for root" do
