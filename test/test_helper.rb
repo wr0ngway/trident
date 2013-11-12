@@ -105,8 +105,9 @@ end
 
 def child_pids
   processes = {}
-  lines = `ps -g #{Process.pid} -opid,command`.lines
-  lines[1..-1].each do |line|
+  lines = `ps -g #{Process.pid} -opid,command`.lines.to_a
+  lines.shift # get rid of header
+  lines.each do |line|
      pieces = line.split
      pid = pieces[0].to_i
      next if pid == Process.pid
