@@ -103,11 +103,30 @@ def wait_for(io, pattern)
   end
 end
 
+def child_pids
+  processes = {}
+  lines = `ps -g #{Process.pid} -opid,command`.lines
+  lines[1..-1].each do |line|
+     pieces = line.split
+     pid = pieces[0].to_i
+     next if pid == Process.pid
+     command = pieces[1..-1].join(' ')
+     processes[pid] = command
+  end
+  processes
+end
+
+def kill_all_child_processes
+  child_pids.keys.each {|p| Process.kill("KILL", p) rescue nil }
+  Process.waitall
+end
+
 class MiniTest::Should::TestCase
   ORIGINAL_PROCLINE = $0
 
   setup do
     $0 = ORIGINAL_PROCLINE
+    kill_all_child_processes
   end
 end
 
