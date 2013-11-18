@@ -103,22 +103,27 @@ def wait_for(io, pattern)
   end
 end
 
-def child_pids
+def child_processes(pid=Process.pid)
   processes = {}
-  lines = `ps -g #{Process.pid} -opid,command`.lines.to_a
+  lines = `pstree -w #{pid}`.lines.to_a
+  #  lines = `ps -g #{pid} -opid,command`.lines.to_a
   lines.shift # get rid of header
   lines.each do |line|
-     pieces = line.split
-     pid = pieces[0].to_i
-     next if pid == Process.pid
-     command = pieces[1..-1].join(' ')
-     processes[pid] = command
+    pieces = line.scan(/\A[^\d]*(\d+) \w+ (.*)\Z/).first
+    pid = pieces.shift
+    pid = pid.to_i
+    raise "Failed to extract pid: #{line} - #{pieces}" if pid == 0
+    next if pid == Process.pid
+
+    command = pieces.shift.strip
+    next if command =~ /^ps/
+    processes[pid] = command
   end
   processes
 end
 
 def kill_all_child_processes
-  child_pids.keys.each {|p| Process.kill("KILL", p) rescue nil }
+  child_processes.keys.each {|p| Process.kill("KILL", p) rescue nil }
   Process.waitall
 end
 

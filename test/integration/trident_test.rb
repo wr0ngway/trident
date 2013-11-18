@@ -7,18 +7,6 @@ class Trident::TridentTest < MiniTest::Should::TestCase
     @cli = "#{File.expand_path('../../..', __FILE__)}/bin/trident"
   end
 
-  def process_list
-    processes = {}
-    lines = `ps -e -opid,command`.lines.grep(/trident\[/)
-    lines.each do |line|
-      pieces = line.split
-      pid = pieces[0].to_i
-      next if pid == Process.pid
-      command = pieces[1..-1].join(' ')
-      processes[pid] = command
-    end
-    processes
-  end
 
   def parse_manager(manager_str)
     pools = {}
@@ -38,7 +26,7 @@ class Trident::TridentTest < MiniTest::Should::TestCase
       wait_for(io, /<pool-mypool1> Pool started with 3 workers/)
       wait_for(io, /<pool-mypool2> Pool started with 2 workers/)
 
-      processes = process_list
+      processes = child_processes
       assert_equal 6, processes.size
       manager = processes[io.pid]
       pools = parse_manager(manager)
@@ -56,7 +44,7 @@ class Trident::TridentTest < MiniTest::Should::TestCase
       wait_for(io, /Main loop exited/)
 
       Process.wait(io.pid)
-      assert_empty process_list
+      assert_empty child_processes
     end
 
   end
@@ -70,7 +58,7 @@ class Trident::TridentTest < MiniTest::Should::TestCase
       wait_for(io, /<pool-mypool1> Pool started with 3 workers/)
       wait_for(io, /<pool-mypool2> Pool started with 2 workers/)
 
-      processes = process_list
+      processes = child_processes
       assert_equal 6, processes.size
       manager = processes[io.pid]
       pools = parse_manager(manager)
@@ -79,7 +67,7 @@ class Trident::TridentTest < MiniTest::Should::TestCase
       Process.kill("KILL", child)
 
       wait_for(io, /<pool-mypool1> Spawned worker \d+, worker count now at 3/)
-      processes = process_list
+      processes = child_processes
       assert_equal 6, processes.size
       manager = processes[io.pid]
       pools = parse_manager(manager)
@@ -88,7 +76,7 @@ class Trident::TridentTest < MiniTest::Should::TestCase
 
       Process.kill("USR1", io.pid)
       Process.wait(io.pid)
-      assert_empty process_list
+      assert_empty child_processes
     end
 
   end

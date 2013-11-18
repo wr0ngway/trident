@@ -8,11 +8,12 @@ class Trident::UtilsTest < MiniTest::Should::TestCase
     should "set the procline of the process" do
       pid = fork do
         procline "foo", "bar"
+        sleep 1
       end
-
-      process_name = `ps -o command -p #{pid}`.lines.to_a.last.strip
+      process_name = child_processes[pid]
       assert_equal "trident[foo]: bar", process_name
       Process.kill("KILL", pid)
+      Process.waitall
     end
     
   end
