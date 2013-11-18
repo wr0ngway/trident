@@ -1,0 +1,10 @@
+0.2.0 (11/18/2013)
+------------------
+
+prevent environment from stealing cli log <0947a63> [Matt Conway]
+
+
+0.1.0 (11/05/2013)
+------------------
+
+Initial version
