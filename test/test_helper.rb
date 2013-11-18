@@ -104,6 +104,17 @@ def wait_for(io, pattern)
 end
 
 def child_processes(pid=Process.pid)
+  case RUBY_PLATFORM
+    when /darwin/
+      child_processes_osx(pid)
+    when /linux/
+      child_processes_linux(pid)
+    else
+      raise "Unknown platform: #{RUBY_PLATFORM}"
+  end
+end
+
+def child_processes_osx(pid)
   processes = {}
   lines = `pstree -w #{pid}`.lines.to_a
   #  lines = `ps -g #{pid} -opid,command`.lines.to_a
@@ -116,6 +127,23 @@ def child_processes(pid=Process.pid)
     next if pid == Process.pid
 
     command = pieces.shift.strip
+    next if command =~ /^ps/
+    processes[pid] = command
+  end
+  processes
+end
+
+def child_processes_linux(pid)
+  processes = {}
+  lines = `pstree -pal #{pid}`.lines.to_a
+  lines.each do |line|
+    line.chomp!
+    pieces = line.scan(/(\{?\w+\}?),(\d+)(.*)/).first
+    pid = pieces[1].to_i
+    raise "Failed to extract pid: #{line} - #{pieces}" if pid == 0
+    next if pid == Process.pid
+
+    command = "#{pieces[0]}#{pieces[2]}".strip
     next if command =~ /^ps/
     processes[pid] = command
   end
