@@ -103,51 +103,31 @@ def wait_for(io, pattern)
   end
 end
 
-def child_processes(pid=Process.pid)
-  case RUBY_PLATFORM
-    when /darwin/
-      child_processes_osx(pid)
-    when /linux/
-      child_processes_linux(pid)
-    else
-      raise "Unknown platform: #{RUBY_PLATFORM}"
-  end
-end
-
-def child_processes_osx(pid)
+def child_processes(root_pid=Process.pid)
   processes = {}
-  lines = `pstree -w #{pid}`.lines.to_a
-  #  lines = `ps -g #{pid} -opid,command`.lines.to_a
-  lines.shift # get rid of header
-  lines.each do |line|
-    pieces = line.scan(/\A[^\d]*(\d+) \w+ (.*)\Z/).first
-    pid = pieces.shift
-    pid = pid.to_i
-    raise "Failed to extract pid: #{line} - #{pieces}" if pid == 0
-    next if pid == Process.pid
-
-    command = pieces.shift.strip
-    next if command =~ /^ps/
-    processes[pid] = command
-  end
-  processes
-end
-
-def child_processes_linux(pid)
-  processes = {}
-  lines = `pstree -pal #{pid}`.lines.to_a
+  relations = {}
+  lines = `ps -e -o pid,ppid,command`.lines.to_a
+  lines.shift # remove header
   lines.each do |line|
     line.chomp!
-    pieces = line.scan(/(\{?\w+\}?),(\d+)(.*)/).first
-    pid = pieces[1].to_i
-    raise "Failed to extract pid: #{line} - #{pieces}" if pid == 0
-    next if pid == Process.pid
+    pieces = line.scan(/(\d+)\s+(\d+)\s+(.*)/).first
+    pid = pieces[0].to_i
+    ppid = pieces[1].to_i
+    command = pieces[2].strip
 
-    command = "#{pieces[0]}#{pieces[2]}".strip
     next if command =~ /^ps/
+
     processes[pid] = command
+    relations[ppid] ||= []
+    relations[ppid] << pid
   end
-  processes
+
+  pids = Array(relations[root_pid])
+  pids.each do |pid|
+    pids.concat(Array(relations[pid]))
+  end
+
+  processes.select {|k, v| pids.include?(k) }
 end
 
 def kill_all_child_processes
