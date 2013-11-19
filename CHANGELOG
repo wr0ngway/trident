@@ -1,3 +1,8 @@
+0.4.0 (11/19/2013)
+------------------
+
+don't implicitly set SIGCHLD, and reset back to default when appropriate <5a4f774> [Matt Conway]
+
 0.3.0 (11/19/2013)
 ------------------
 
