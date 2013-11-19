@@ -37,20 +37,6 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
     Marshal.load(result)
   end
 
-  context "#initialize" do
-
-    should "add in CHLD handler" do
-      handler = SignalHandler.new({}, Target.new)
-      assert_equal({"SIGCHLD" => ["update"]}, handler.signal_mappings)
-    end
-
-    should "allow CHLD handler replacement" do
-      handler = SignalHandler.new({"CHLD" => "foo"}, Target.new)
-      assert_equal({"SIGCHLD" => ["foo"]}, handler.signal_mappings)
-    end
-
-  end
-
   context "#signal_mappings==" do
 
     should "normalize signal names" do
@@ -59,7 +45,7 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
                    {"int" => "foo", "sigterm" => "bar",
                     "USR1" => "baz", "SIGUSR2" => ["bum", "hum"]}
 
-      assert_equal({"SIGCHLD" => ["update"], "SIGINT" => ["foo"],
+      assert_equal({"SIGINT" => ["foo"],
                     "SIGTERM" => ["bar"], "SIGUSR1" => ["baz"],
                     "SIGUSR2" => ["bum", "hum"]}, handler.signal_mappings)
     end
@@ -102,7 +88,6 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
 
       handler.expects(:trap_deferred).with("SIGINT")
       handler.expects(:trap_deferred).with("SIGTERM")
-      handler.expects(:trap_deferred).with("SIGCHLD")
       handler.send(:setup_signal_handlers)
     end
 
@@ -112,7 +97,7 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
 
       handler.stubs(:trap_deferred)
       handler.send(:setup_signal_handlers)
-      assert_equal({"SIGCHLD" => nil, "SIGINT" => nil, "SIGTERM" => nil},
+      assert_equal({"SIGINT" => nil, "SIGTERM" => nil},
                    handler.original_signal_handlers)
     end
 
@@ -137,11 +122,34 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
 
       handler.expects(:trap).with("SIGINT", nil)
       handler.expects(:trap).with("SIGTERM", nil)
-      handler.expects(:trap).with("SIGCHLD", nil)
       handler.send(:reset_signal_handlers)
       assert_empty handler.original_signal_handlers
     end
 
+    should "reset SIGCHLD to default" do
+      signals = {"chld" => "update"}
+      handler = SignalHandler.new(signals, Target.new)
+
+      handler.stubs(:trap_deferred)
+      handler.send(:setup_signal_handlers)
+
+      handler.expects(:trap).with("SIGCHLD", "DEFAULT")
+      handler.send(:reset_signal_handlers)
+      assert_empty handler.original_signal_handlers
+    end
+
+    should "reset signals to original when set" do
+      signals = {"int" => "foo", "chld" => "bar"}
+      handler = SignalHandler.new(signals, Target.new)
+
+      handler.stubs(:trap_deferred).returns("IGNORE")
+      handler.send(:setup_signal_handlers)
+
+      handler.expects(:trap).with("SIGINT", "IGNORE")
+      handler.expects(:trap).with("SIGCHLD", "IGNORE")
+      handler.send(:reset_signal_handlers)
+      assert_empty handler.original_signal_handlers
+    end
   end
 
   context "#handle_signal_queue" do
@@ -250,6 +258,25 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
 
       received = fc.wait
       assert_equal [[:bar, [], nil], [:foo, [], nil], [:action_break, [], nil]], received
+    end
+
+    should "preserve SIGCHLD behavior" do
+      fc1 = ForkChild.new do
+        target = Target.new
+        SignalHandler.start({"chld" => "foo"}, target)
+        fc2 = ForkChild.new do
+          SignalHandler.reset_for_fork
+          pid = fork do
+            sleep 0.1
+          end
+          wait_thr = Process.detach(pid)
+          wait_thr.value.nil? # this will be nil if CHLD handler is not "DEFAULT"
+        end
+        fc2.wait
+      end
+
+      received = fc1.wait
+      assert_equal false, received
     end
 
     should "honor signal queue limit" do

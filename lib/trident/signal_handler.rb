@@ -118,10 +118,6 @@ module Trident
 
         @signal_mappings[k] = Array(v)
       end
-
-      # Should always handle CHLD signals as they wakeup/drive the main
-      # loop on status changes from child processes
-      @signal_mappings = {"SIGCHLD" => ["update"]}.merge(@signal_mappings)
     end
 
     def setup_self_pipe
@@ -143,7 +139,13 @@ module Trident
 
     def reset_signal_handlers
       original_signal_handlers.each do |signal_name, original_handler|
-        trap(signal_name, original_handler)
+        if signal_name == "SIGCHLD" && original_handler == nil
+          # SIGCHLD handler needs to be default for stuff like
+          # Process.detach to work correctly
+          trap(signal_name, "DEFAULT")
+        else
+          trap(signal_name, original_handler)
+        end
       end
       original_signal_handlers.clear
     end
