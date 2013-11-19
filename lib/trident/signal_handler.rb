@@ -1,3 +1,5 @@
+require 'fcntl'
+
 module Trident
   class SignalHandler
     include GemLogger::LoggerSupport
