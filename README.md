@@ -36,3 +36,4 @@ See other command line options with
 
 * Add support for reloading the trident config with a HUP signal
 * Add support in yml for specifying [process limits](http://www.ruby-doc.org/core-1.9.3/Process.html#method-c-setrlimit) (memory especially)
+* Add ability to track pool processes across a restart (or maybe only across a HUP) - allows a restart to spin up new processes as old ones die off gracefully.
