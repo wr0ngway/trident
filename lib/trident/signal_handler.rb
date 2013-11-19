@@ -26,6 +26,12 @@ module Trident
         self.instance = nil
       end
 
+      def join
+        raise "No signal handler started" unless instance
+        logger.info "Joining on signal handler"
+        instance.join
+      end
+
       def reset_for_fork
         raise "No signal handler started" unless instance
         instance.reset_for_fork
@@ -41,6 +47,7 @@ module Trident
       @signal_queue = []
       @self_pipe = []
       @original_signal_handlers = {}
+      @main_loop = nil
       self.signal_mappings = signal_mappings
     end
 
@@ -48,21 +55,27 @@ module Trident
       setup_self_pipe
       setup_signal_handlers
 
-      logger.info "Main loop started"
-      loop do
-        signal_result = handle_signal_queue
-        break if signal_result == :break
-        logger.debug "Snoozing main loop"
-        msg = snooze if signal_queue.empty?
-        logger.debug "Main loop awakened: #{msg.inspect}"
-        break if msg == MSG_STOP
+      @main_loop = Thread.new do
+        logger.info "Main loop started"
+        loop do
+          signal_result = handle_signal_queue
+          break if signal_result == :break
+          logger.debug "Snoozing main loop"
+          msg = snooze if signal_queue.empty?
+          logger.debug "Main loop awakened: #{msg.inspect}"
+          break if msg == MSG_STOP
+        end
+        logger.info "Main loop exited"
       end
-      logger.info "Main loop exited"
     end
 
     def stop
       reset_signal_handlers
       wakeup(MSG_STOP)
+    end
+
+    def join
+      @main_loop.join
     end
 
     def reset_for_fork

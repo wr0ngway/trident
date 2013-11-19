@@ -188,12 +188,13 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
 
   end
 
-  context "#start/stop" do
+  context "#start/stop/join" do
 
     should "block until woken" do
       handler = SignalHandler.new({}, Target.new)
       handler.stubs(:trap)
-      thread = Thread.new { handler.start }
+      handler.start
+      thread = Thread.new { handler.join }
       sleep 0.1
       assert thread.alive?
       handler.stop
@@ -221,12 +222,22 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
 
   end
 
+  context ".join" do
+
+    should "fail if already instantiated" do
+      SignalHandler.instance = nil
+      assert_raises(RuntimeError) { SignalHandler.join }
+    end
+
+  end
+
   context "api" do
 
     should "react to signals" do
       fc = ForkChild.new do
         target = Target.new
         SignalHandler.start({"int" => "foo", "term" => "bar", "usr1" => "action_break"}, target)
+        SignalHandler.join
         target.received
       end
 
@@ -246,6 +257,7 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
         $stderr.reopen("/dev/null")
         target = Target.new
         SignalHandler.start({"int" => "foo", "term" => "bar", "usr1" => "action_break"}, target)
+        SignalHandler.join
         target.received
       end
       sleep 0.1

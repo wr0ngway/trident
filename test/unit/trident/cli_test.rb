@@ -249,6 +249,7 @@ class Trident::CLITest < MiniTest::Should::TestCase
     should "run if given logfile and pidfile when daemonizing" do
 
       Trident::SignalHandler.expects(:start).once
+      Trident::SignalHandler.expects(:join).once
       Trident::Pool.any_instance.stubs(:fork)
       Trident::CLI.any_instance.expects(:daemonize).once
 

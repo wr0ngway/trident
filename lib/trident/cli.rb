@@ -69,9 +69,9 @@ module Trident
       manager = Trident::PoolManager.new(config_hash['application'],
                                            pools.values,
                                            config_hash['prefork'] == true)
-      sh_thread = Thread.new { Trident::SignalHandler.start(config_hash['signals'], manager) }
+      Trident::SignalHandler.start(config_hash['signals'], manager)
       manager.start
-      sh_thread.join
+      Trident::SignalHandler.join
     end
 
     private
