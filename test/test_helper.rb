@@ -93,8 +93,8 @@ class FileCounter
 
 end
 
-def wait_for(io, pattern)
-  timeout(5) do
+def wait_for(io, pattern, interval=5)
+  timeout(interval) do
     loop do
       line = io.readline
       puts line if ENV['DEBUG']

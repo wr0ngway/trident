@@ -54,11 +54,13 @@ module Trident
     def start
       setup_self_pipe
       setup_signal_handlers
+      target.start if target.respond_to?(:start)
 
       @main_loop = Thread.new do
         logger.info "Main loop started"
         loop do
           signal_result = handle_signal_queue
+          target.update if target.respond_to?(:update)
           break if signal_result == :break
           logger.debug "Snoozing main loop"
           msg = snooze if signal_queue.empty?

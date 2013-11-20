@@ -19,24 +19,6 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
     end
   end
 
-  def do_in_child
-    read_from_child, write_from_child = IO.pipe
-
-    pid = fork do
-      read_from_child.close
-      result = yield
-      Marshal.dump(result, write_from_child)
-      exit!(0) # skips exit handlers.
-    end
-
-    [pid, read_from_child]
-    write_from_child.close
-    result = read_from_child.read
-    Process.wait(pid)
-    raise "child failed" if result.empty?
-    Marshal.load(result)
-  end
-
   context "#signal_mappings==" do
 
     should "normalize signal names" do
@@ -257,7 +239,9 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
       Process.kill("USR1", fc.pid)
 
       received = fc.wait
-      assert_equal [[:bar, [], nil], [:foo, [], nil], [:action_break, [], nil]], received
+      assert_includes received, [:bar, [], nil]
+      assert_includes received, [:foo, [], nil]
+      assert_includes received, [:action_break, [], nil]
     end
 
     should "preserve SIGCHLD behavior" do

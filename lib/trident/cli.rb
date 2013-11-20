@@ -70,7 +70,6 @@ module Trident
                                            pools.values,
                                            config_hash['prefork'] == true)
       Trident::SignalHandler.start(config_hash['signals'], manager)
-      manager.start
       Trident::SignalHandler.join
     end
 
