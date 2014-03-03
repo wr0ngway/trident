@@ -4,6 +4,11 @@ rvm:
   - 1.9.3
   - 2.0.0
   - 2.1.1
-#  - rbx
+  - rbx
   
 script: bundle exec rake
+
+matrix:
+  allow_failures:
+    - rvm: rbx
+
