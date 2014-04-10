@@ -178,7 +178,7 @@ class Trident::CLITest < MiniTest::Should::TestCase
 
       assert_equal 5, pools['pool1'].size
       assert_equal @handlers['handler1'], pools['pool1'].handler
-      assert_equal({"foo" => "bar"}, pools['pool1'].options)
+      assert_equal({"size" => 5, "options" => {"foo" => "bar"}, "handler" => "handler1"}, pools['pool1'].options)
     end
 
     should "filter pools if given" do

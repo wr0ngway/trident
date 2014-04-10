@@ -1,7 +1,6 @@
 require_relative '../test_helper'
 
 class Trident::TridentTest < MiniTest::Should::TestCase
-
   setup do
     @project_root = File.expand_path('../../fixtures/integration_project', __FILE__)
     @cli = "#{File.expand_path('../../..', __FILE__)}/bin/trident"
@@ -10,15 +9,15 @@ class Trident::TridentTest < MiniTest::Should::TestCase
 
   def parse_manager(manager_str)
     pools = {}
-    manager_str.scan(/(\w+)\[([0-9, ]+)\]/) do |pool, pids|
-      pids = pids.split(", ").collect(&:to_i)
-      pools[pool] = pids
-    end
+
+    pool = manager_str.scan(/managing (\w+)\[/).flatten.first
+    pids = manager_str.scan(/@pid=(\d+)/).flatten.map(&:to_i).uniq
+
+    pools[pool] = pids
     pools
   end
 
   context "basic usage" do
-
     should "start and stop pools" do
       cmd = "#{@cli} --verbose --config #{@project_root}/config/trident.yml"
       io = IO.popen(cmd, :err=>[:child, :out])
@@ -46,11 +45,9 @@ class Trident::TridentTest < MiniTest::Should::TestCase
       Process.wait(io.pid)
       assert_empty child_processes
     end
-
   end
 
   context "worker maintenance" do
-
     should "restart failed workers" do
       cmd = "#{@cli} --verbose --config #{@project_root}/config/trident.yml"
       io = IO.popen(cmd, :err=>[:child, :out])
@@ -78,6 +75,5 @@ class Trident::TridentTest < MiniTest::Should::TestCase
       Process.wait(io.pid)
       assert_empty child_processes
     end
-
   end
 end

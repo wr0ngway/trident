@@ -3,16 +3,36 @@ module Trident
     include GemLogger::LoggerSupport
     include Trident::Utils
 
-    attr_reader :name, :handler, :size, :options, :workers
+    attr_reader :name, :handler, :size, :options, :workers, :orphans, :orphans_dir
 
-    def initialize(name, handler, size, options={})
+    def initialize(name, handler, options={})
       @name = name
       @handler = handler
-      @size = size
-      @options = options || {}
+      @size = options['size'] || 2
+      @options = options
       @workers = Set.new
+      @orphans_dir = options['pids_dir'] || File.join(Dir.pwd, name, 'pids')
+      @orphans = load_orphans(orphans_dir)
     end
 
+    def load_orphans(path_to_orphans_dir)
+      unless File.exists?(path_to_orphans_dir)
+        path_to_orphans_dir = FileUtils.mkdir_p(path_to_orphans_dir) 
+      end
+
+      orphans = Set.new
+
+      Dir.foreach(path_to_orphans_dir) do |file|
+        path = File.join(path_to_orphans_dir, file)
+        next if File.directory?(path)
+        pid = IO.read(path)
+        orphan_worker = Worker.new(pid, self)
+        orphans << orphan_worker
+      end
+
+      orphans
+    end
+    
     def start
       logger.info "<pool-#{name}> Starting pool"
       maintain_worker_count('stop_gracefully')
@@ -42,31 +62,66 @@ module Trident
 
     def maintain_worker_count(kill_action)
       cleanup_dead_workers(false)
+      cleanup_orphaned_workers
 
-      if size > workers.size
-        spawn_workers(size - workers.size)
+      workers_count = workers.size + orphans.size
+
+      # If the sum of both the workers and orphan workers is under our
+      # size requirement let's spawn more workers to reach that size
+      if size > workers_count
+        workers_to_spawn = size - workers_count
+        
+        logger.info "<pool-#{name}> Not enough workers running. Spawning #{workers_to_spawn}."
+        spawn_workers(workers_to_spawn) 
+      # If we have more workers than the size requirement, let's kill workers off
+      # until we hit that size
       elsif size < workers.size
-        kill_workers(workers.size - size, kill_action)
+        workers_there_need_to_be = size - orphans.size
+        workers_to_kill = workers.size - workers_there_need_to_be
+
+        logger.info "<pool-#{name}> Too many workers: #{workers.size}. Killing #{workers_to_kill}"
+        kill_workers(workers_to_kill, kill_action)
+      # If we have more workers and orphan workers than the size requirement, and
+      # the workers that push us over are orphans, let's kill off all our workers
+      elsif size < workers_count
+        logger.info "<pool-#{name}> Not enough workers to kill. Too many orphans."
+        kill_workers(workers.size, kill_action)
       else
         logger.debug "<pool-#{name}> Worker count is correct"
       end
     end
 
+    # Remove orphan workers which are either not running
+    # or which we don't have permission to signal
+    def cleanup_orphaned_workers
+      orphans.clone.each do |worker|
+        begin
+          Process.kill(0, worker.pid)
+        rescue Errno::EPERM, Errno::ESRCH
+          orphans.delete(worker)
+          worker.destroy
+        end
+      end
+    end
+
     def cleanup_dead_workers(blocking=true)
       wait_flags = blocking ? 0 : Process::WNOHANG
-      workers.clone.each do |pid|
+      workers.clone.each do |worker|
         begin
-          wpid = Process.wait(pid, wait_flags)
+          if Process.wait(worker.pid, wait_flags)
+            workers.delete(worker)
+            worker.destroy
+          end
         rescue Errno::EINTR
           logger.warn("<pool-#{name}> Interrupted cleaning up workers, retrying")
           retry
         rescue Errno::ECHILD
           logger.warn("<pool-#{name}> Error cleaning up workers, ignoring")
-          # Calling process.wait on a pid that was already waited on throws
-          # a ECHLD, so may as well remove it from our list of workers
-          wpid = pid
+          # Calling Process.wait on a pid that was already waited on throws
+          # a ECHILD, so may as well remove it from our list of workers
+          workers.delete(worker)
+          worker.destroy
         end
-        workers.delete(wpid) if wpid
       end
     end
 
@@ -79,8 +134,8 @@ module Trident
 
     def kill_workers(count, action)
       logger.info "<pool-#{name}> Killing #{count} workers with #{action}"
-      workers.to_a[-count, count].each do |pid|
-        kill_worker(pid, action)
+      workers.to_a[-count, count].each do |worker|
+        kill_worker(worker, action)
       end
     end
 
@@ -91,18 +146,22 @@ module Trident
         handler.load
         handler.start(options)
       end
-      workers << pid
+      
+      worker = Worker.new(pid, self)
+      worker.save
+
+      workers << worker
       logger.info "<pool-#{name}> Spawned worker #{pid}, worker count now at #{workers.size}"
     end
 
-    def kill_worker(pid, action)
+    def kill_worker(worker, action)
       sig = handler.signal_for(action)
       raise "<pool-#{name}> No signal for action: #{action}" unless sig
-      logger.info "<pool-#{name}> Sending signal to worker: #{pid}/#{sig}/#{action}"
-      Process.kill(sig, pid)
-      workers.delete(pid)
-      logger.info "<pool-#{name}> Killed worker #{pid}, worker count now at #{workers.size}"
+      logger.info "<pool-#{name}> Sending signal to worker: #{worker.pid}/#{sig}/#{action}"
+      Process.kill(sig, worker.pid)
+      workers.delete(worker)
+      worker.destroy
+      logger.info "<pool-#{name}> Killed worker #{worker.pid}, worker count now at #{workers.size}"
     end
-
   end
 end
