@@ -21,6 +21,10 @@ module Trident
       @created_at ||= File.stat(path).ctime
     end
 
+    def to_s
+      pid
+    end
+
     protected
 
     def path

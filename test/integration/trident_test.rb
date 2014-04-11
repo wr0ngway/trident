@@ -6,14 +6,12 @@ class Trident::TridentTest < MiniTest::Should::TestCase
     @cli = "#{File.expand_path('../../..', __FILE__)}/bin/trident"
   end
 
-
   def parse_manager(manager_str)
     pools = {}
-
-    pool = manager_str.scan(/managing (\w+)\[/).flatten.first
-    pids = manager_str.scan(/@pid=(\d+)/).flatten.map(&:to_i).uniq
-
-    pools[pool] = pids
+    manager_str.scan(/(\w+)\[([0-9, ]+)\]/) do |pool, pids|
+      pids = pids.split(", ").collect(&:to_i)
+      pools[pool] = pids
+    end
     pools
   end
 
