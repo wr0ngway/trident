@@ -1,4 +1,5 @@
 require_relative '../../test_helper'
+require 'pry'
 
 class Trident::PoolTest < MiniTest::Should::TestCase
   class DeadbeatPool < Pool
@@ -157,6 +158,38 @@ class Trident::PoolTest < MiniTest::Should::TestCase
       Process.expects(:kill).with("TERM", pool.workers.to_a[-1].pid)
       Process.expects(:kill).with("TERM", pool.workers.to_a[-2].pid)
       pool.send(:maintain_worker_count, 'stop_gracefully')
+    end
+
+    should "not spawn new workers when orphan count is too high " do
+      dir = Dir.mktmpdir
+      pool = DeadbeatPool.new("foo", @handler, 'size' => 4, 'pids_dir' => dir, 'sleep' => 0.1)
+      pool.start
+      pool.stop
+      
+      new_pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => dir, 'sleep' => 0.1)
+      assert_equal 0, new_pool.workers.size
+      assert_equal 4, new_pool.orphans.size
+    end
+    
+    should "kill workers when orphan count is high and workers are present" do
+      dir = Dir.mktmpdir
+      pool = DeadbeatPool.new("foo", @handler, 'size' => 4, 'pids_dir' => dir, 'sleep' => 0.1)
+      pool.start
+      pool.stop
+      
+      new_pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => dir, 'sleep' => 0.1)
+      assert_equal 4, new_pool.orphans.size
+      
+      new_pool.send(:spawn_workers, 4)
+      assert_equal 4, pool.workers.size
+
+      pool.send(:maintain_worker_count, 'stop_gracefully')
+
+      pool.workers.each do |worker|
+        Process.waitpid(worker.pid)
+      end
+      
+      assert_equal 0, pool.workers.size
     end
 
     should "do nothing when count is correct" do
