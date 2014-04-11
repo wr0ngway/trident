@@ -17,7 +17,7 @@ module Trident
 
     def load_orphans(path_to_orphans_dir)
       unless File.exists?(path_to_orphans_dir)
-        path_to_orphans_dir = FileUtils.mkdir_p(path_to_orphans_dir) 
+        path_to_orphans_dir = FileUtils.mkdir_p(path_to_orphans_dir)
       end
 
       orphans = Set.new
@@ -32,7 +32,7 @@ module Trident
 
       orphans
     end
-    
+
     def start
       logger.info "<pool-#{name}> Starting pool"
       maintain_worker_count('stop_gracefully')
@@ -61,8 +61,8 @@ module Trident
     private
 
     def maintain_worker_count(kill_action)
-      cleanup_dead_workers(false)
       cleanup_orphaned_workers
+      cleanup_dead_workers(false)
 
       workers_count = workers.size + orphans.size
 
@@ -70,9 +70,9 @@ module Trident
       # size requirement let's spawn more workers to reach that size
       if size > workers_count
         workers_to_spawn = size - workers_count
-        
+
         logger.info "<pool-#{name}> Not enough workers running. Spawning #{workers_to_spawn}."
-        spawn_workers(workers_to_spawn) 
+        spawn_workers(workers_to_spawn)
       # If we have more workers than the size requirement, let's kill workers off
       # until we hit that size
       elsif size < workers.size
@@ -92,12 +92,14 @@ module Trident
     end
 
     # Remove orphan workers which are either not running
-    # or which we don't have permission to signal
+    # or which we don't have permission to signal (thereby telling us they
+    # where never a part of the pool)
     def cleanup_orphaned_workers
       orphans.clone.each do |worker|
         begin
           Process.kill(0, worker.pid)
-        rescue Errno::EPERM, Errno::ESRCH
+        rescue Errno::EPERM, Errno::ESRCH => e
+          logger.info("<pool-#{name}> Cleaning up orphaned worker #{worker.pid} because #{e.class.name}:#{e.message})")
           orphans.delete(worker)
           worker.destroy
         end
@@ -146,7 +148,7 @@ module Trident
         handler.load
         handler.start(options)
       end
-      
+
       worker = Worker.new(pid, self)
       worker.save
 
