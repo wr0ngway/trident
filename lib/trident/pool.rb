@@ -69,23 +69,21 @@ module Trident
       # If the sum of both the workers and orphan workers is under our
       # size requirement let's spawn more workers to reach that size
       if size > workers_count
-        workers_to_spawn = size - workers_count
-
-        logger.info "<pool-#{name}> Not enough workers running. Spawning #{workers_to_spawn}."
-        spawn_workers(workers_to_spawn)
+        spawn_workers(size - workers_count)
       # If we have more workers than the size requirement, let's kill workers off
       # until we hit that size
       elsif size < workers.size
-        workers_there_need_to_be = size - orphans.size
+        workers_there_need_to_be = [size - orphans.size, 0].max
         workers_to_kill = workers.size - workers_there_need_to_be
 
-        logger.info "<pool-#{name}> Too many workers: #{workers.size}. Killing #{workers_to_kill}"
         kill_workers(workers_to_kill, kill_action)
       # If we have more workers and orphan workers than the size requirement, and
-      # the workers that push us over are orphans, let's kill off all our workers
+      # the workers that push us over are orphans, let's kill off some workers
       elsif size < workers_count
-        logger.info "<pool-#{name}> Not enough workers to kill. Too many orphans."
-        kill_workers(workers.size, kill_action)
+        logger.info "<pool-#{name}> Too many orphans. Killing workers."
+        workers_to_kill = [workers_count - size, workers.size].min
+
+        kill_workers(workers_to_kill, kill_action)
       else
         logger.debug "<pool-#{name}> Worker count is correct"
       end
@@ -97,8 +95,11 @@ module Trident
     def cleanup_orphaned_workers
       orphans.clone.each do |worker|
         begin
+          # Check if the process is running
           Process.kill(0, worker.pid)
         rescue Errno::EPERM, Errno::ESRCH => e
+          # If we get EPERM (Permission error) or ESRCH (No process with that pid)
+          # stop tracking that worker
           logger.info("<pool-#{name}> Cleaning up orphaned worker #{worker.pid} because #{e.class.name}:#{e.message})")
           orphans.delete(worker)
           worker.destroy
