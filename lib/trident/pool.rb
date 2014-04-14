@@ -59,34 +59,56 @@ module Trident
       logger.info "<pool-#{name}> Pool up to date"
     end
 
+    # @return [Boolean] true iff total_workers_count > size.
+    # false otherwise
+    def above_threshold?
+      size < total_workers_count
+    end
+
+    # @return [Boolean] true iff total_workers_count == size.
+    # false otherwise
+    def at_threshold?
+      size == total_workers_count
+    end
+
+    # @return [Boolean] true iff workers.size > 0.
+    # false otherwise
+    def has_workers?
+      workers.size > 0
+    end
+
+    # @return [Integer] total number of workers including orphaned
+    # workers.
+    def total_workers_count
+      workers.size + orphans.size
+    end
+
     private
 
     def maintain_worker_count(kill_action)
       cleanup_orphaned_workers
       cleanup_dead_workers(false)
 
-      workers_count = workers.size + orphans.size
+      if at_threshold?
+        logger.debug "<pool-#{name}> Worker count is correct."
+      # If we are above the threshold and we have workers
+      # then reduce the number of workers.
+      elsif above_threshold? && has_workers?
+        overthreshold = total_workers_count - size
+        workers_to_kill = [overthreshold, workers.size].min
 
+        logger.info("<pool-#{name}> Total workers #{workers.size} above threshold #{size} killing #{workers_to_kill}.")
+        kill_workers(workers_to_kill, kill_action)
+      # If we are above the threshold, and no workers
+      # then we can't do anything, but lets log out a
+      # message indicating this state.
+      elsif above_threshold?
+        logger.info("<pool-#{name}> Waiting on orphans before spawning workers.")
       # If the sum of both the workers and orphan workers is under our
-      # size requirement let's spawn more workers to reach that size
-      if size > workers_count
-        spawn_workers(size - workers_count)
-      # If we have more workers than the size requirement, let's kill workers off
-      # until we hit that size
-      elsif size < workers.size
-        workers_there_need_to_be = [size - orphans.size, 0].max
-        workers_to_kill = workers.size - workers_there_need_to_be
-
-        kill_workers(workers_to_kill, kill_action)
-      # If we have more workers and orphan workers than the size requirement, and
-      # the workers that push us over are orphans, let's kill off some workers
-      elsif size < workers_count
-        logger.info "<pool-#{name}> Too many orphans. Killing workers."
-        workers_to_kill = [workers_count - size, workers.size].min
-
-        kill_workers(workers_to_kill, kill_action)
+      # size requirement let's spawn the number of workers required to
+      # reach that size
       else
-        logger.debug "<pool-#{name}> Worker count is correct"
+        spawn_workers(size - total_workers_count)
       end
     end
 

@@ -160,15 +160,17 @@ class Trident::PoolTest < MiniTest::Should::TestCase
       pool.send(:maintain_worker_count, 'stop_gracefully')
     end
 
-    should "not spawn new workers when orphan count is too high " do
+    should "do nothing when orphan count is high and no workers are present" do
       dir = Dir.mktmpdir
       pool = DeadbeatPool.new("foo", @handler, 'size' => 4, 'pids_dir' => dir, 'sleep' => 0.1)
       pool.start
       pool.stop
 
-      new_pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => dir, 'sleep' => 0.1)
-      assert_equal 0, new_pool.workers.size
-      assert_equal 4, new_pool.orphans.size
+      pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => dir, 'sleep' => 0.1)
+      pool.send(:maintain_worker_count, 'stop_gracefully')
+
+      assert_equal 0, pool.workers.size
+      assert_equal 4, pool.orphans.size
     end
 
     should "kill workers when orphan count is high and workers are present" do
@@ -316,6 +318,138 @@ class Trident::PoolTest < MiniTest::Should::TestCase
       pool.send(:cleanup_orphaned_workers)
 
       assert_equal 0, pool.orphans.size
+    end
+  end
+
+  context "above_threshold?" do
+    should "return true if total_workers_count is above the threshold" do
+      pool = Pool.new("foo", @handler, 'size' => 0, 'pids_dir' => Dir.mktmpdir, 'sleep' => 0.1)
+
+      pool.send(:spawn_worker)
+      assert_equal 1, pool.workers.size
+
+      # cleanup spawned worker
+      # in case assertion fails.
+      pid = pool.workers.first.pid
+      Process.kill(9, pid)
+      Process.waitpid(pid)
+
+      assert pool.above_threshold?
+    end
+
+    should "return false if total_workers_count is equal to the threshold" do
+      pool = Pool.new("foo", @handler, 'size' => 1, 'pids_dir' => Dir.mktmpdir, 'sleep' => 0.1)
+
+      pool.send(:spawn_worker)
+      assert_equal 1, pool.workers.size
+
+      # cleanup spawned worker
+      # in case assertion fails.
+      pid = pool.workers.first.pid
+      Process.kill(9, pid)
+      Process.waitpid(pid)
+
+      refute pool.above_threshold?
+    end
+
+    should "return false if total_workers_count is below the threshold" do
+      pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => Dir.mktmpdir, 'sleep' => 0.1)
+
+      pool.send(:spawn_worker)
+      assert_equal 1, pool.workers.size
+
+      # cleanup spawned worker
+      # in case assertion fails.
+      pid = pool.workers.first.pid
+      Process.kill(9, pid)
+      Process.waitpid(pid)
+
+      refute pool.above_threshold?
+    end
+  end
+
+  context "at_threshold?" do
+    should "return false if total_workers_count is above the threshold" do
+      pool = Pool.new("foo", @handler, 'size' => 0, 'pids_dir' => Dir.mktmpdir, 'sleep' => 0.1)
+
+      pool.send(:spawn_worker)
+      assert_equal 1, pool.workers.size
+
+      # cleanup spawned worker
+      # in case assertion fails.
+      pid = pool.workers.first.pid
+      Process.kill(9, pid)
+      Process.waitpid(pid)
+
+      refute pool.at_threshold?
+    end
+
+    should "return true if total_workers_count is equal to the threshold" do
+      pool = Pool.new("foo", @handler, 'size' => 1, 'pids_dir' => Dir.mktmpdir, 'sleep' => 0.1)
+
+      pool.send(:spawn_worker)
+      assert_equal 1, pool.workers.size
+
+      # cleanup spawned worker
+      # in case assertion fails.
+      pid = pool.workers.first.pid
+      Process.kill(9, pid)
+      Process.waitpid(pid)
+
+      assert pool.at_threshold?
+    end
+
+    should "return false if total_workers_count is below the threshold" do
+      pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => Dir.mktmpdir, 'sleep' => 0.1)
+
+      pool.send(:spawn_worker)
+      assert_equal 1, pool.workers.size
+
+      # cleanup spawned worker
+      # in case assertion fails.
+      pid = pool.workers.first.pid
+      Process.kill(9, pid)
+      Process.waitpid(pid)
+
+      refute pool.at_threshold?
+    end
+  end
+
+  context "has_workers?" do
+    should "return false if there are no workers" do
+      pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => Dir.mktmpdir, 'sleep' => 0.1)
+      refute pool.has_workers?
+    end
+
+    should "return true if there are workers" do
+      pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => Dir.mktmpdir, 'sleep' => 0.1)
+      refute pool.has_workers?
+
+      pool.send(:spawn_worker)
+
+      # cleanup spawned worker
+      # in case assertion fails.
+      pid = pool.workers.first.pid
+      Process.kill(9, pid)
+      Process.waitpid(pid)
+
+      assert pool.has_workers?
+    end
+  end
+
+  context "total_workers_count" do
+    should "return the sum of orphans.size + workers.size" do
+      pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => Dir.mktmpdir, 'sleep' => 0.1)
+      assert_equal 0, pool.total_workers_count
+
+      pool.orphans << Worker.new(1, pool)
+      pool.orphans << Worker.new(2, pool)
+      pool.orphans << Worker.new(3, pool)
+      pool.workers << Worker.new(4, pool)
+      pool.workers << Worker.new(5, pool)
+      pool.workers << Worker.new(6, pool)
+
+      assert_equal 6, pool.total_workers_count
     end
   end
 end
