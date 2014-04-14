@@ -2,15 +2,6 @@ module Trident
   # @param [Integer] pid - pid of the worker process
   # @param [Trident::Pool] pool - pool managing the worker process.
   class Worker < Struct.new(:pid, :pool)
-    # attr_reader :pid, :pool
-
-    # # @param [Integer] pid - pid of the worker process
-    # # @param [Trident::Pool] pool - pool managing the worker process.
-    # def initialize(pid, pool)
-    #   @pid = pid
-    #   @pool = pool
-    # end
-
     # Crate a pidfile for this worker so that
     # we may track it
     def save
