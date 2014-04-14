@@ -126,6 +126,9 @@ module Trident
           logger.info("<pool-#{name}> Cleaning up orphaned worker #{worker.pid} because #{e.class.name}:#{e.message})")
           orphans.delete(worker)
           worker.destroy
+        rescue => e
+          # Make sure we catch any expected errors when signaling the process.
+          logger.error("<pool-#{name}> Cleaning up orphaned worker #{worker.pid} because #{e.class.name}:#{e.message})")
         end
       end
     end
