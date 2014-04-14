@@ -8,16 +8,16 @@ module Trident
     def initialize(name, handler, options={})
       @name = name
       @handler = handler
-      @size = options['size'] || 2
-      @options = options
+      @size = options.delete('size') || 2
+      @options = options || {}
       @workers = Set.new
-      @orphans_dir = options['pids_dir'] || File.join(Dir.pwd, name, 'pids')
+      @orphans_dir = options.delete('pids_dir') || File.join(Dir.pwd, 'trident-pools', name, 'pids')
       @orphans = load_orphans(orphans_dir)
     end
 
     def load_orphans(path_to_orphans_dir)
       unless File.exists?(path_to_orphans_dir)
-        path_to_orphans_dir = FileUtils.mkdir_p(path_to_orphans_dir)
+        FileUtils.mkdir_p(path_to_orphans_dir)
       end
 
       orphans = Set.new

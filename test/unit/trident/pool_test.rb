@@ -165,21 +165,21 @@ class Trident::PoolTest < MiniTest::Should::TestCase
       pool = DeadbeatPool.new("foo", @handler, 'size' => 4, 'pids_dir' => dir, 'sleep' => 0.1)
       pool.start
       pool.stop
-      
+
       new_pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => dir, 'sleep' => 0.1)
       assert_equal 0, new_pool.workers.size
       assert_equal 4, new_pool.orphans.size
     end
-    
+
     should "kill workers when orphan count is high and workers are present" do
       dir = Dir.mktmpdir
       pool = DeadbeatPool.new("foo", @handler, 'size' => 4, 'pids_dir' => dir, 'sleep' => 0.1)
       pool.start
       pool.stop
-      
+
       new_pool = Pool.new("foo", @handler, 'size' => 2, 'pids_dir' => dir, 'sleep' => 0.1)
       assert_equal 4, new_pool.orphans.size
-      
+
       new_pool.send(:spawn_workers, 4)
       assert_equal 4, pool.workers.size
 
@@ -188,7 +188,7 @@ class Trident::PoolTest < MiniTest::Should::TestCase
       pool.workers.each do |worker|
         Process.waitpid(worker.pid)
       end
-      
+
       assert_equal 0, pool.workers.size
     end
 
