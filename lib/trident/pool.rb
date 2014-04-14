@@ -25,7 +25,8 @@ module Trident
       Dir.foreach(path_to_orphans_dir) do |file|
         path = File.join(path_to_orphans_dir, file)
         next if File.directory?(path)
-        pid = IO.read(path)
+
+        pid = Integer(IO.read(path))
         orphan_worker = Worker.new(pid, self)
         orphans << orphan_worker
       end

@@ -272,22 +272,50 @@ class Trident::PoolTest < MiniTest::Should::TestCase
   end
 
   context "#cleanup_orphaned_workers" do
-    should "remove any orphaned workers that can't be controlled" do
+    should "remove any orphaned workers that throw Errno::ESRCH (does not exist)" do
       dir = Dir.mktmpdir
       pool = DeadbeatPool.new("foo", @handler, 'size' => 1, 'pids_dir' => dir, 'sleep' => 0.1)
-      pool.start
+      pool.send(:spawn_worker)
+      assert_equal 1, pool.workers.size
+
       pid = pool.workers.first.pid
+
       pool.stop
 
-      new_pool = Pool.new("foo", @handler, 'size' => 1, 'pids_dir' => dir, 'sleep' => 0.1)
-      assert_equal 1, new_pool.orphans.size
-      assert_equal pid, new_pool.orphans.first.pid
       Process.kill(9, pid)
       Process.waitpid(pid)
 
-      new_pool.send(:cleanup_orphaned_workers)
+      pool = Pool.new("foo", @handler, 'size' => 1, 'pids_dir' => dir, 'sleep' => 0.1)
 
-      assert 0, new_pool.orphans.size
+      assert_equal 1, pool.orphans.size
+
+      pool.send(:cleanup_orphaned_workers)
+
+      assert_equal 0, pool.orphans.size
+    end
+
+    should "remove any orphaned workers that throw Errno::EPERM (permission error)" do
+      dir = Dir.mktmpdir
+      pool = DeadbeatPool.new("foo", @handler, 'size' => 1, 'pids_dir' => dir, 'sleep' => 0.1)
+      pool.send(:spawn_worker)
+      assert_equal 1, pool.workers.size
+
+      pid = pool.workers.first.pid
+
+      pool.stop
+
+      Process.kill(9, pid)
+      Process.waitpid(pid)
+
+      pool = Pool.new("foo", @handler, 'size' => 1, 'pids_dir' => dir, 'sleep' => 0.1)
+
+      assert_equal 1, pool.orphans.size
+
+      Process.expects(:kill).once.with(0, pid).raises(Errno::EPERM)
+
+      pool.send(:cleanup_orphaned_workers)
+
+      assert_equal 0, pool.orphans.size
     end
   end
 end

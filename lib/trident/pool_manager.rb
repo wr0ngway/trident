@@ -50,7 +50,7 @@ module Trident
     private
 
     def procline_display
-      pools.collect {|pool| "#{pool.name}#{pool.workers.to_a.inspect}" }.join(" ")
+      pools.collect {|pool| "#{pool.name}#{pool.workers.to_a.collect(&:pid)}" }.join(" ")
     end
 
     def load_handlers
