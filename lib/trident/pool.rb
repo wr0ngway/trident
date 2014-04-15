@@ -190,7 +190,6 @@ module Trident
       logger.info "<pool-#{name}> Sending signal to worker: #{worker.pid}/#{sig}/#{action}"
       Process.kill(sig, worker.pid)
       workers.delete(worker)
-      worker.destroy
       logger.info "<pool-#{name}> Killed worker #{worker.pid}, worker count now at #{workers.size}"
     end
   end
