@@ -108,6 +108,7 @@ module Trident
       # size requirement let's spawn the number of workers required to
       # reach that size.
       else
+        logger.info("<pool-#{name}> Orphans #{orphans.size}, Workers #{workers.size}")
         spawn_workers(size - total_workers_count)
       end
     end
