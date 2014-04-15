@@ -13,7 +13,7 @@ module Trident
     # Remove the pidfile associated with this
     # worker
     def destroy
-      FileUtils.rm path
+      FileUtils.rm path if File.exists?(path)
     end
 
     # We determine the time that this worker was

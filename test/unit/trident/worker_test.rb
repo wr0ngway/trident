@@ -12,11 +12,11 @@ class Trident::WorkerTest < MiniTest::Should::TestCase
   teardown do
     @worker.destroy if File.exists?(@worker.send(:path))
   end
-  
+
   context "save" do
     should "write its pid to a file" do
       @worker.save
-      pidfile = File.join(@pool.orphans_dir, '123.pid') 
+      pidfile = File.join(@pool.orphans_dir, '123.pid')
       assert File.exists?(pidfile)
       assert_equal '123', File.read(pidfile)
     end
@@ -26,11 +26,18 @@ class Trident::WorkerTest < MiniTest::Should::TestCase
     should "remove its file" do
       @worker.save
 
-      pidfile = File.join(@pool.orphans_dir, '123.pid') 
+      pidfile = File.join(@pool.orphans_dir, '123.pid')
       assert File.exists?(pidfile)
 
       @worker.destroy
       refute File.exists?(pidfile)
+    end
+
+    should "do nothing if the file does not exist" do
+      @worker.save
+      # Invoke destroy twice
+      @worker.destroy
+      @worker.destroy
     end
   end
 
@@ -38,7 +45,7 @@ class Trident::WorkerTest < MiniTest::Should::TestCase
     should "return creation time" do
       @worker.save
 
-      pidfile = File.join(@pool.orphans_dir, '123.pid') 
+      pidfile = File.join(@pool.orphans_dir, '123.pid')
       assert_equal @worker.created_at, File.stat(pidfile).ctime
     end
   end

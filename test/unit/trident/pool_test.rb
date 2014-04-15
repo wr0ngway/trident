@@ -67,6 +67,23 @@ class Trident::PoolTest < MiniTest::Should::TestCase
       pool.send(:spawn_workers, 4)
       assert_equal 4, pool.workers.size
     end
+
+    context "forked process" do
+      should "clean up its pid file when complete" do
+        pool = Pool.new("foo", @handler, 'size' => 4, 'pids_dir' => Dir.mktmpdir, 'sleep' => 1)
+        pool.send(:spawn_workers, 1)
+
+        assert_equal 1, pool.workers.size
+
+        worker = pool.workers.first
+        assert File.exists?(File.join(pool.orphans_dir, "#{worker.pid}.pid"))
+
+        pool.send(:kill_worker, worker, 'stop_gracefully')
+        Process.waitpid(worker.pid)
+
+        refute File.exists?(File.join(pool.orphans_dir, "#{worker.pid}.pid"))
+      end
+    end
   end
 
   context "#kill_workers" do
@@ -157,6 +174,7 @@ class Trident::PoolTest < MiniTest::Should::TestCase
       pool.send(:spawn_workers, 2)
       Process.expects(:kill).with("TERM", pool.workers.to_a[-1].pid)
       Process.expects(:kill).with("TERM", pool.workers.to_a[-2].pid)
+
       pool.send(:maintain_worker_count, 'stop_gracefully')
     end
 

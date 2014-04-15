@@ -140,7 +140,6 @@ module Trident
         begin
           if Process.wait(worker.pid, wait_flags)
             workers.delete(worker)
-            worker.destroy
           end
         rescue Errno::EINTR
           logger.warn("<pool-#{name}> Interrupted cleaning up workers, retrying")
@@ -150,7 +149,6 @@ module Trident
           # Calling Process.wait on a pid that was already waited on throws
           # a ECHILD, so may as well remove it from our list of workers
           workers.delete(worker)
-          worker.destroy
         end
       end
     end
@@ -171,10 +169,15 @@ module Trident
 
     def spawn_worker
       pid = fork do
-        procline "pool-#{name}-worker", "starting handler #{handler.name}"
-        Trident::SignalHandler.reset_for_fork
-        handler.load
-        handler.start(options)
+        begin
+          procline "pool-#{name}-worker", "starting handler #{handler.name}"
+          Trident::SignalHandler.reset_for_fork
+          handler.load
+          handler.start(options)
+        ensure
+          worker = Worker.new(Process.pid, self)
+          worker.destroy
+        end
       end
 
       worker = Worker.new(pid, self)
@@ -189,7 +192,9 @@ module Trident
       raise "<pool-#{name}> No signal for action: #{action}" unless sig
       logger.info "<pool-#{name}> Sending signal to worker: #{worker.pid}/#{sig}/#{action}"
       Process.kill(sig, worker.pid)
+
       workers.delete(worker)
+
       logger.info "<pool-#{name}> Killed worker #{worker.pid}, worker count now at #{workers.size}"
     end
   end
