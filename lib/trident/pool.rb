@@ -106,7 +106,7 @@ module Trident
         logger.info("<pool-#{name}> Waiting on orphans before spawning workers.")
       # If the sum of both the workers and orphan workers is under our
       # size requirement let's spawn the number of workers required to
-      # reach that size
+      # reach that size.
       else
         spawn_workers(size - total_workers_count)
       end
