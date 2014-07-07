@@ -26,4 +26,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "minitest", "~> 4.0"
   spec.add_development_dependency "minitest_should"
   spec.add_development_dependency "minitest-reporters"
+  spec.add_development_dependency "pry"
 end

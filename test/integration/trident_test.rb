@@ -1,12 +1,10 @@
 require_relative '../test_helper'
 
 class Trident::TridentTest < MiniTest::Should::TestCase
-
   setup do
     @project_root = File.expand_path('../../fixtures/integration_project', __FILE__)
     @cli = "#{File.expand_path('../../..', __FILE__)}/bin/trident"
   end
-
 
   def parse_manager(manager_str)
     pools = {}
@@ -18,7 +16,6 @@ class Trident::TridentTest < MiniTest::Should::TestCase
   end
 
   context "basic usage" do
-
     should "start and stop pools" do
       cmd = "#{@cli} --verbose --config #{@project_root}/config/trident.yml"
       io = IO.popen(cmd, :err=>[:child, :out])
@@ -46,11 +43,9 @@ class Trident::TridentTest < MiniTest::Should::TestCase
       Process.wait(io.pid)
       assert_empty child_processes
     end
-
   end
 
   context "worker maintenance" do
-
     should "restart failed workers" do
       cmd = "#{@cli} --verbose --config #{@project_root}/config/trident.yml"
       io = IO.popen(cmd, :err=>[:child, :out])
@@ -78,6 +73,5 @@ class Trident::TridentTest < MiniTest::Should::TestCase
       Process.wait(io.pid)
       assert_empty child_processes
     end
-
   end
 end

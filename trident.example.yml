@@ -39,6 +39,8 @@ pools:
     # options passed to each handler's initializer (merged into handler options above)
     options:
       some_option: foo
+    # directory for storing child pids
+    pids_dir: '/tmp/mypool'
   otherpool:
     # number of worker processes
     size: 3
@@ -47,3 +49,5 @@ pools:
     # options passed to each handler's initializer (merged into handler options above)
     options:
       some_option: bar
+    # directory for storing child pids
+    pids_dir: '/tmp/otherpool'

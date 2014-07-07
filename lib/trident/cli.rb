@@ -123,7 +123,7 @@ module Trident
 
         next if pool_filter.size > 0 && ! pool_filter.include?(name)
 
-        pool = Trident::Pool.new(name, handler, pool_config['size'], pool_config['options'])
+        pool = Trident::Pool.new(name, handler, pool_config)
         pools[name] = pool
       end
       pools

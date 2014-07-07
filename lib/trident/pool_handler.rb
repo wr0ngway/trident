@@ -26,6 +26,5 @@ module Trident
     def signal_for(action)
       signal_mappings[action] || signal_mappings['default'] || "SIGTERM"
     end
-
   end
 end
