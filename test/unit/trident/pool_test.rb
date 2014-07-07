@@ -21,6 +21,7 @@ class Trident::PoolTest < MiniTest::Should::TestCase
         end
         def start
           sleep(@o['sleep']) if @o['sleep']
+          exit!(0)
         end
       end
     EOS

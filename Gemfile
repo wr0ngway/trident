@@ -7,3 +7,4 @@ gemspec
 gem 'coveralls', :require => false
 
 gem "mocha", :require => false
+gem 'rubymine_minitest_spec', :git => 'git@github.com:backupify/rubymine_minitest_spec.git'
