@@ -286,6 +286,12 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
 
       queue_exceeded = received.select {|m, a, b| m == :stderr && a.first =~ /Signal queue exceeded/ }
       handler_received = received.select {|m, a, b| m == :bar }
+      p received.size
+      p received
+      p queue_exceeded.size
+      p queue_exceeded
+      p handler_received.size
+      p handler_received
       assert queue_exceeded.size > 0
       assert handler_received.size > 0
       assert handler_received.size < 50
