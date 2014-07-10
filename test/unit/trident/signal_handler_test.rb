@@ -265,18 +265,21 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
 
     should "honor signal queue limit" do
       fc = ForkChild.new do
-        $stderr.reopen("/dev/null")
+        err = StringIO.new
+        $stderr = err
         target = Target.new
         SignalHandler.start({"int" => "foo", "term" => "bar", "usr1" => "action_break"}, target)
         SignalHandler.join
-        target.received
+        target.received + err.string.lines.collect {|l| [:stderr, [l], nil] }
       end
       sleep 0.1
 
-      50.times { Process.kill("TERM", fc.pid) }
+      fork { 50.times { Process.kill("TERM", fc.pid) } }
       sleep 0.2
       Process.kill("USR1", fc.pid)
       received = fc.wait
+      queue_exceeded = received.select {|m, a, b| m == :stderr && a.first =~ /Signal queue exceeded/ }
+      assert queue_exceeded.size > 0
       assert received.size > 0
       assert received.size < 50
     end
