@@ -223,6 +223,10 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
 
   context "api" do
 
+    setup do
+      SignalHandler.stop rescue nil
+    end
+
     should "react to signals" do
       fc = ForkChild.new do
         target = Target.new
