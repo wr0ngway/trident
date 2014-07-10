@@ -151,6 +151,11 @@ module Minitest::Should
       $0 = ORIGINAL_PROCLINE
       kill_all_child_processes
     end
+
+    teardown do
+      puts "teardown the signal handler or other tests will break: #{self.class} #{self}" if SignalHandler.instance
+    end
+
   end
 end
 

@@ -196,6 +196,10 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
 
   context ".start" do
 
+    teardown do
+      SignalHandler.instance = nil
+    end
+
     should "fail if already instantiated" do
       SignalHandler.instance = SignalHandler.new({}, Target.new)
       assert_raises(RuntimeError) { SignalHandler.start({}, Target.new) }
@@ -222,10 +226,6 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
   end
 
   context "api" do
-
-    setup do
-      SignalHandler.stop rescue nil
-    end
 
     should "react to signals" do
       fc = ForkChild.new do
@@ -276,16 +276,19 @@ class Trident::SignalHandlerTest < MiniTest::Should::TestCase
         SignalHandler.join
         target.received + err.string.lines.collect {|l| [:stderr, [l], nil] }
       end
-      sleep 0.1
+      sleep 0.1 # wait for fork to spin up
 
-      fork { 50.times { Process.kill("TERM", fc.pid) } }
-      sleep 0.2
+      p = fork { 50.times { Process.kill("TERM", fc.pid) } }
+      Process.wait(p)
+
       Process.kill("USR1", fc.pid)
       received = fc.wait
+
       queue_exceeded = received.select {|m, a, b| m == :stderr && a.first =~ /Signal queue exceeded/ }
+      handler_received = received.select {|m, a, b| m == :bar }
       assert queue_exceeded.size > 0
-      assert received.size > 0
-      assert received.size < 50
+      assert handler_received.size > 0
+      assert handler_received.size < 50
     end
 
   end
